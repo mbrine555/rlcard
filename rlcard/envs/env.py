@@ -1,144 +1,101 @@
-import numpy as np
-import random
-
-from rlcard.utils.utils import *
+from rlcard.utils import *
 
 class Env(object):
     ''' The base Env class
     '''
 
-    def __init__(self, game, allow_step_back=False, allow_raw_data=False):
+    def __init__(self, config):
         ''' Initialize
 
         Args:
-            game (Game): The Game class
-            allow_step_back (boolean): True if allowing step_back
-            allow_raw_data (boolean): True if allow raw obs in state['raw_obs'] and raw
-             legal actions in state['raw_legal_actions']
+            config (dict): A config dictionary. Currently, the dictionary
+                includes
+                'allow_step_bac'k (boolean) - True if allowing
+                 step_back
+                'allow_raw_data' (boolean) - True if allow
+                 raw obs in state['raw_obs'] and raw legal actions in
+                 state['raw_legal_actions']
+                'single_agent_mode' (boolean) - True if single agent mode,
+                 i.e., the other players are pretrained models
+                'active_player' (int) - If 'singe_agent_mode' is True,
+                 'active_player' specifies the player that does not use
+                  pretrained models
         '''
-        self.name = None
-        self.game = game
-        self.allow_step_back = allow_step_back
-        self.allow_raw_data = allow_raw_data
+        self.allow_step_back = self.game.allow_step_back = config['allow_step_back']
+        self.allow_raw_data = config['allow_raw_data']
+        self.record_action = config['record_action']
+        if self.record_action:
+            self.action_recorder = []
 
-        # Get number of players/actions in this game
-        self.player_num = game.get_player_num()
-        self.action_num = game.get_action_num()
+        # Get the number of players/actions in this game
+        self.player_num = self.game.get_player_num()
+        self.action_num = self.game.get_action_num()
 
         # A counter for the timesteps
         self.timestep = 0
 
-        # MODES
-        self.single_agent_mode = False
-        self.active_player = None
-        self.human_mode = False
+        # Modes
+        self.single_agent_mode = config['single_agent_mode']
+        self.active_player = config['active_player']
 
+        # Load pre-trained models if either single_agent_mode=True
+        if self.single_agent_mode:
+            self.model = self._load_model()
+            # If at least one pre-trained agent needs raw data, we set self.allow_raw_data = True
+            for agent in self.model.agents:
+                if agent.use_raw:
+                    self.allow_raw_data = True
+                    break
 
-    def init_game(self):
-        ''' Start a new game
+        # Set random seed, default is None
+        self._seed(config['seed'])
 
-        Returns:
-            (tuple): Tuple containing:
-
-                (numpy.array): The begining state of the game
-                (int): The begining player
+    def reset(self):
+        ''' Reset environment in single-agent mode
+            Call _init_game if not in single agent mode
         '''
-        state, player_id = self.game.init_game()
-        return self.extract_state(state), player_id
+        if not self.single_agent_mode:
+            return self._init_game()
+
+        while True:
+            state, player_id = self.game.init_game()
+            while not player_id == self.active_player:
+                self.timestep += 1
+                action, _ = self.model.agents[player_id].eval_step(self._extract_state(state))
+                if not self.model.agents[player_id].use_raw:
+                    action = self._decode_action(action)
+                state, player_id = self.game.step(action)
+
+            if not self.game.is_over():
+                break
+
+        return self._extract_state(state)
 
     def step(self, action, raw_action=False):
         ''' Step forward
 
         Args:
-            action (int): the action taken by the current player
+            action (int): The action taken by the current player
             raw_action (boolean): True if the action is a raw action
 
         Returns:
             (tuple): Tuple containing:
 
-                (numpy.array): The next state
+                (dict): The next state
                 (int): The ID of the next player
         '''
         if not raw_action:
-            action = self.decode_action(action)
-        if self.single_agent_mode or self.human_mode:
-            return self.single_agent_step(action)
+            action = self._decode_action(action)
+        if self.single_agent_mode:
+            return self._single_agent_step(action)
 
         self.timestep += 1
+        # Record the action for human interface
+        if self.record_action:
+            self.action_recorder.append([self.get_player_id(), action])
         next_state, player_id = self.game.step(action)
 
-        return self.extract_state(next_state), player_id
-
-    def single_agent_step(self, action):
-        ''' Step forward for human/single agent
-
-        Args:
-            action (int): the action takem by the current player
-
-        Returns:
-            next_state (numpy.array): The next state
-        '''
-        reward = 0.
-        done = False
-        self.timestep += 1
-        state, player_id = self.game.step(action)
-        while not self.game.is_over() and not player_id == self.active_player:
-            self.timestep += 1
-            action, _ = self.model.agents[player_id].eval_step(self.extract_state(state))
-            if not self.model.agents[player_id].use_raw:
-                action = self.decode_action(action)
-            if self.human_mode:
-                print('\r>> Agent {} chooses '.format(player_id), end='')
-                self.print_action(action)
-                print('')
-            state, player_id = self.game.step(action)
-
-        if self.game.is_over():
-            reward = self.get_payoffs()[self.active_player]
-            done = True
-            if self.human_mode:
-                self.print_result(self.active_player)
-            state = self.reset()
-            return state, reward, done
-
-        elif self.human_mode:
-            self.print_state(self.active_player)
-
-        return self.extract_state(state), reward, done
-
-    def reset(self):
-        ''' Reset environment in single-agent mode
-        '''
-        if not self.single_agent_mode and not self.human_mode:
-            raise ValueError('Reset can only be used in single-agent mode or human mode')
-
-        if self.human_mode:
-            history = []
-        while True:
-            state, player_id = self.game.init_game()
-            while not player_id == self.active_player:
-                self.timestep += 1
-                action, _ = self.model.agents[player_id].eval_step(self.extract_state(state))
-                if not self.model.agents[player_id].use_raw:
-                    action = self.decode_action(action)
-                if self.human_mode:
-                    history.append((player_id, action))
-                state, player_id = self.game.step(action)
-
-            if not self.game.is_over():
-                if self.human_mode:
-                    print('\n>> Start a new game!')
-                    for player_id, action in history:
-                        print('\r>> Agent {} chooses '.format(player_id), end='')
-                        self.print_action(action)
-                        print('')
-                    self.print_state(self.active_player)
-                break
-            else:
-                if self.human_mode:
-                    history.clear()
-
-        return self.extract_state(state)
+        return self._extract_state(next_state), player_id
 
     def step_back(self):
         ''' Take one step backward.
@@ -146,7 +103,7 @@ class Env(object):
         Returns:
             (tuple): Tuple containing:
 
-                (numpy.array): The previous state
+                (dict): The previous state
                 (int): The ID of the previous player
 
         Note: Error will be raised if step back from the root node.
@@ -162,53 +119,27 @@ class Env(object):
 
         return state, player_id
 
-
-    def get_player_id(self):
-        ''' Get the current player id
-
-        Returns:
-            (int): the id of the current player
-        '''
-        return self.game.get_player_id()
-
-    def is_over(self):
-        ''' Check whether the curent game is over
-
-        Returns:
-            (boolean): True is current game is over
-        '''
-        return self.game.is_over()
-
-    def get_state(self, player_id):
-        ''' Get the state given player id
-
-        Args:
-            player_id (int): The player id
-
-        Returns:
-            (numpy.array): The observed state of the player
-        '''
-        return self.extract_state(self.game.get_state(player_id))
-
     def set_agents(self, agents):
         ''' Set the agents that will interact with the environment
 
         Args:
             agents (list): List of Agent classes
         '''
-        if self.single_agent_mode or self.human_mode:
+        if self.single_agent_mode:
             raise ValueError('Setting agent in single agent mode or human mode is not allowed.')
 
         self.agents = agents
+        # If at least one agent needs raw data, we set self.allow_raw_data = True
+        for agent in self.agents:
+            if agent.use_raw:
+                self.allow_raw_data = True
+                break
 
-    def run(self, is_training=False, seed=None):
+    def run(self, is_training=False):
         ''' Run a complete game, either for evaluation or training RL agent.
 
         Args:
             is_training (boolean): True if for training purpose.
-            seed (int): A seed for running the game. For single-process program,
-              the seed should be set to None. For multi-process program, the
-              seed should be asigned for reproducibility.
 
         Returns:
             (tuple) Tuple containing:
@@ -219,15 +150,11 @@ class Env(object):
         Note: The trajectories are 3-dimension list. The first dimension is for different players.
               The second dimension is for different transitions. The third dimension is for the contents of each transiton
         '''
-        if self.single_agent_mode or self.human_mode:
-            raise ValueError('Run in single agent mode or human mode is not allowed.')
-
-        if seed is not None:
-            np.random.seed(seed)
-            random.seed(seed)
+        if self.single_agent_mode:
+            raise ValueError('Run in single agent not allowed.')
 
         trajectories = [[] for _ in range(self.player_num)]
-        state, player_id = self.init_game()
+        state, player_id = self.reset()
 
         # Loop to play the game
         trajectories[player_id].append(state)
@@ -264,80 +191,33 @@ class Env(object):
 
         return trajectories, payoffs
 
-    def run_multi(self, task_num, result, is_training=False, seed=None):
-        if seed is not None:
-            np.random.seed(seed)
-        for _ in range(task_num):
-            result.append(self.run(is_training=is_training))
-
-    def set_mode(self, active_player=0, single_agent_mode=False, human_mode=False):
-        ''' Turn on the single-agent-mode. Pretrained models will
-            be loaded to simulate other agents
-
-        Args:
-            active_player (int): The player that does not use pretrained models
-        '''
-        if not isinstance(active_player, int) or active_player < 0 or active_player >= self.player_num:
-            raise ValueError('Active player should be a positiv integer less than the player number')
-
-        if not single_agent_mode and not human_mode:
-            raise ValueError('You must set single_agent_mode=True, or human_mode=True')
-
-        if single_agent_mode and human_mode:
-            raise ValueError('You can not set single_agentmode=True and human_mode=True together')
-
-        self.model = self.load_model()
-        for agent in self.model.agents:
-            if agent.use_raw:
-                self.allow_raw_data = True
-                break
-        self.active_player = active_player
-        self.single_agent_mode = single_agent_mode
-        self.human_mode = human_mode
-
-    def print_state(self, player):
-        ''' Print out the state of a given player
-
-        Args:
-            player (int): Player id
-        '''
-        raise NotImplementedError
-
-    def print_result(self, player):
-        ''' Print the game result when the game is over
-
-        Args:
-            player (int): The human player id
-        '''
-        raise NotImplementedError
-
-    @staticmethod
-    def print_action(action):
-        ''' Print out an action in a nice form
-
-        Args:
-            action (str): A string a action
-        '''
-        raise NotImplementedError
-
-    def load_model(self):
-        ''' Load pretrained/rule model
+    def is_over(self):
+        ''' Check whether the curent game is over
 
         Returns:
-            model (Model): A Model object
+            (boolean): True is current game is over
         '''
-        raise NotImplementedError
+        return self.game.is_over()
 
-    def extract_state(self, state):
-        ''' Extract useful information from state for RL. Must be implemented in the child class.
-
-        Args:
-            state (dict): the raw state
+    def get_player_id(self):
+        ''' Get the current player id
 
         Returns:
-            (numpy.array): the extracted state
+            (int): The id of the current player
         '''
-        raise NotImplementedError
+        return self.game.get_player_id()
+
+
+    def get_state(self, player_id):
+        ''' Get the state given player id
+
+        Args:
+            player_id (int): The player id
+
+        Returns:
+            (numpy.array): The observed state of the player
+        '''
+        return self._extract_state(self.game.get_state(player_id))
 
     def get_payoffs(self):
         ''' Get the payoffs of players. Must be implemented in the child class.
@@ -349,7 +229,56 @@ class Env(object):
         '''
         raise NotImplementedError
 
-    def decode_action(self, action_id):
+    def get_perfect_information(self):
+        ''' Get the perfect information of the current state
+
+        Returns:
+            (dict): A dictionary of all the perfect information of the current state
+
+        Note: Must be implemented in the child class.
+        '''
+        raise NotImplementedError
+
+    def _seed(self, seed=None):
+        self.np_random, seed = seeding.np_random(seed)
+        self.game.np_random = self.np_random
+        return seed
+
+    def _init_game(self):
+        ''' Start a new game
+
+        Returns:
+            (tuple): Tuple containing:
+
+                (numpy.array): The begining state of the game
+                (int): The begining player
+        '''
+        state, player_id = self.game.init_game()
+        if self.record_action:
+            self.action_recorder = []
+        return self._extract_state(state), player_id
+
+    def _load_model(self):
+        ''' Load pretrained/rule model
+
+        Returns:
+            model (Model): A Model object
+        '''
+        raise NotImplementedError
+
+    def _extract_state(self, state):
+        ''' Extract useful information from state for RL. Must be implemented in the child class.
+
+        Args:
+            state (dict): The raw state
+
+        Returns:
+            (numpy.array): The extracted state
+        '''
+        raise NotImplementedError
+
+
+    def _decode_action(self, action_id):
         ''' Decode Action id to the action in the game.
 
         Args:
@@ -362,7 +291,7 @@ class Env(object):
         '''
         raise NotImplementedError
 
-    def get_legal_actions(self):
+    def _get_legal_actions(self):
         ''' Get all legal actions for current state.
 
         Returns:
@@ -371,3 +300,34 @@ class Env(object):
         Note: Must be implemented in the child class.
         '''
         raise NotImplementedError
+
+    def _single_agent_step(self, action):
+        ''' Step forward for human/single agent
+
+        Args:
+            action (int): The action takem by the current player
+
+        Returns:
+            next_state (numpy.array): The next state
+        '''
+        reward = 0.
+        done = False
+        self.timestep += 1
+        state, player_id = self.game.step(action)
+        while not self.game.is_over() and not player_id == self.active_player:
+            self.timestep += 1
+            action, _ = self.model.agents[player_id].eval_step(self._extract_state(state))
+            if not self.model.agents[player_id].use_raw:
+                action = self._decode_action(action)
+            state, player_id = self.game.step(action)
+
+        if self.game.is_over():
+            reward = self.get_payoffs()[self.active_player]
+            done = True
+            state = self.reset()
+            return state, reward, done
+
+        return self._extract_state(state), reward, done
+
+    def init_game(self):
+        raise ValueError('init_game is deperated. Please use env.reset()')

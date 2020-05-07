@@ -1,47 +1,52 @@
 import unittest
-from rlcard.envs.simpledoudizhu import SimpleDoudizhuEnv as Env
+
+import rlcard
 from rlcard.utils.utils import get_downstream_player_id
 from rlcard.agents.random_agent import RandomAgent
+from .determism_util import is_deterministic
 
 
 class TestSimpleDoudizhuEnv(unittest.TestCase):
 
-    def test_init_game_and_extract_state(self):
-        env = Env()
-        state, _ = env.init_game()
+    def test_reset_and_extract_state(self):
+        env = rlcard.make('simple-doudizhu')
+        state, _ = env.reset()
         self.assertEqual(state['obs'].size, 450)
 
+    def test_is_deterministic(self):
+        self.assertTrue(is_deterministic('simple-doudizhu'))
+
     def test_get_legal_actions(self):
-        env = Env()
-        env.set_agents([RandomAgent(131), RandomAgent(131), RandomAgent(131)])
-        env.init_game()
-        legal_actions = env.get_legal_actions()
+        env = rlcard.make('simple-doudizhu')
+        env.set_agents([RandomAgent(env.action_num) for _ in range(env.player_num)])
+        env.reset()
+        legal_actions = env._get_legal_actions()
         for legal_action in legal_actions:
             self.assertLessEqual(legal_action, 130)
 
     def test_step(self):
-        env = Env()
-        _, player_id = env.init_game()
+        env = rlcard.make('simple-doudizhu')
+        _, player_id = env.reset()
         player = env.game.players[player_id]
         _, next_player_id = env.step(130)
         self.assertEqual(next_player_id, get_downstream_player_id(
             player, env.game.players))
 
     def test_step_back(self):
-        env = Env(allow_step_back=True)
-        _, player_id = env.init_game()
+        env = rlcard.make('simple-doudizhu', config={'allow_step_back':True})
+        _, player_id = env.reset()
         env.step(2)
         _, back_player_id = env.step_back()
         self.assertEqual(player_id, back_player_id)
         self.assertEqual(env.step_back(), False)
 
-        env = Env()
+        env = rlcard.make('simple-doudizhu')
         with self.assertRaises(Exception):
             env.step_back()
 
     def test_run(self):
-        env = Env()
-        env.set_agents([RandomAgent(131), RandomAgent(131), RandomAgent(131)])
+        env = rlcard.make('simple-doudizhu')
+        env.set_agents([RandomAgent(env.action_num) for _ in range(env.player_num)])
         trajectories, payoffs = env.run(is_training=False)
         self.assertEqual(len(trajectories), 3)
         win = []
@@ -55,14 +60,14 @@ class TestSimpleDoudizhuEnv(unittest.TestCase):
             self.assertEqual(env.game.players[win[1]].role, 'peasant')
 
     def test_decode_action(self):
-        env = Env()
-        env.init_game()
+        env = rlcard.make('simple-doudizhu')
+        env.reset()
         env.game.state['actions'] = ['888TT', '88899']
         env.game.judger.playable_cards[0] = ['9', 'T', '99', '999', '888TT', '88899']
-        decoded = env.decode_action(28)
+        decoded = env._decode_action(28)
         self.assertEqual(decoded, '888TT')
         env.game.state['actions'] = ['888', '88899', '888TT']
-        decoded = env.decode_action(14)
+        decoded = env._decode_action(14)
         self.assertEqual(decoded, '888')
 
 if __name__ == '__main__':

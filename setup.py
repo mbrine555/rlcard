@@ -5,12 +5,12 @@ with open("README.md", "r", encoding="utf8") as fh:
 
 extras = {
     'torch': ['torch>=1.3'],
-    'tensorflow': ['tensorflow>=1.14,<2.0', 'tensorflow_probability==0.7.0', 'dm-sonnet==1.35']
+    'tensorflow': ['tensorflow>=1.14,<2.0', 'tensorflow_probability==0.7.0']
 }
 
 setuptools.setup(
     name="rlcard",
-    version="0.1.9",
+    version="0.2.1",
     author="Data Analytics at Texas A&M (DATA) Lab",
     author_email="khlai037@tamu.edu",
     description="A Toolkit for Reinforcement Learning in Card Games",
@@ -20,17 +20,24 @@ setuptools.setup(
     keywords=["Reinforcement Learning", "game", "RL", "AI"],
     packages=setuptools.find_packages(exclude=('tests',)),
     package_data={
-    	'rlcard': [ 'models/pretrained/leduc_holdem_nfsp/*',
-    				'games/uno/jsondata/action_space.json',
-    				'games/limitholdem/card2index.json',
-    				'games/leducholdem/card2index.json',
-    				'games/doudizhu/jsondata/*',
-				'games/uno/jsondata/*',
-                'games/simpledoudizhu/jsondata/*'
-	]},
+        'rlcard': ['models/pretrained/leduc_holdem_nfsp/*',
+                   'models/pretrained/leduc_holdem_cfr/*',
+                   'models/pretrained/leduc_holdem_nfsp_pytorch/*',
+                   'games/uno/jsondata/action_space.json',
+                   'games/limitholdem/card2index.json',
+                   'games/leducholdem/card2index.json',
+                   'games/doudizhu/jsondata/*',
+                   'games/uno/jsondata/*',
+                   'games/simpledoudizhu/jsondata/*',
+                   'agents/gin_rummy_human_agent/gui_cards/*',
+                   'agents/gin_rummy_human_agent/gui_cards/cards_png/*',
+                   'agents/gin_rummy_human_agent/gui_gin_rummy/*'
+                   ]},
     install_requires=[
         'numpy>=1.16.3',
-        'matplotlib>=3.0'
+        'matplotlib>=3.0',
+        'pillow>=5.2.0',
+        'termcolor',
     ],
     extras_require=extras,
     requires_python='>=3.5',

@@ -21,7 +21,7 @@ class TestDoudizhuGame(unittest.TestCase):
         #     self.assertIn(e, playable_cards)
         # for e in not_in_cards:
         #     self.assertNotIn(e, playable_cards)
-        
+ 
         # #trio
         # in_cards, not_in_cards, hand = ('444', '555'), (), '334445555689JQBR'
         # playable_cards = Judger.playable_cards_from_hand(hand)
@@ -45,7 +45,7 @@ class TestDoudizhuGame(unittest.TestCase):
         #     self.assertIn(e, playable_cards)
         # for e in not_in_cards:
         #     self.assertNotIn(e, playable_cards)
-        
+
         # #solo_chain_5 -- #solo_chain_12
         # in_cards = ('34567', '345678', '3456789', '3456789T', '3456789TJ',
         #     '3456789TJQ', '3456789TJQK', '3456789TJQKA', '45678', '456789',
@@ -71,7 +71,7 @@ class TestDoudizhuGame(unittest.TestCase):
         # '667788', '66778899', '66778899TT', '66778899TTJJ', '66778899TTJJQQ',
         # '66778899TTJJQQKK', '66778899TTJJQQKKAA', '778899', '778899TT', '778899TTJJ',
         # '778899TTJJQQ', '778899TTJJQQKK', '778899TTJJQQKKAA', '8899TT', '8899TTJJ',
-        # '8899TTJJQQ', '8899TTJJQQKK', '8899TTJJQQKKAA', '99TTJJ', '99TTJJQQ', 
+        # '8899TTJJQQ', '8899TTJJQQKK', '8899TTJJQQKKAA', '99TTJJ', '99TTJJQQ',
         # '99TTJJQQKK', '99TTJJQQKKAA', 'TTJJQQ', 'TTJJQQKK', 'TTJJQQKKAA',
         # 'JJQQKK', 'JJQQKKAA', 'QQKKAA')
         # not_in_cards = ('33445566778899TTJJQQKK', 'KKAA22')
@@ -81,7 +81,7 @@ class TestDoudizhuGame(unittest.TestCase):
         #     self.assertIn(e, playable_cards)
         # for e in not_in_cards:
         #     self.assertNotIn(e, playable_cards)
-        
+
         # #trio_chain_2 -- #trio_chain_6
         # in_cards = ('333444', '333444555', '333444555666', '333444555666777', '333444555666777888',
         # '444555', '444555666', '444555666777', '444555666777888', '444555666777888999',

@@ -4,7 +4,6 @@
 import os
 import json
 from collections import OrderedDict
-import numpy as np
 import threading
 import collections
 
@@ -35,15 +34,16 @@ with open(os.path.join(ROOT_PATH, 'games/doudizhu/jsondata/type_card.json'), 'r'
 CARD_RANK_STR = ['3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K',
                  'A', '2', 'B', 'R']
 CARD_RANK_STR_INDEX = {'3': 0, '4': 1, '5': 2, '6': 3, '7': 4,
-            '8': 5, '9': 6, 'T': 7, 'J': 8, 'Q': 9, 
+            '8': 5, '9': 6, 'T': 7, 'J': 8, 'Q': 9,
             'K': 10, 'A': 11, '2': 12, 'B': 13, 'R': 14}
 # rank list
 CARD_RANK = ['3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K',
              'A', '2', 'BJ', 'RJ']
 
-INDEX = {'3': 0, '4': 1, '5': 2, '6': 3, '7': 4, 
+INDEX = {'3': 0, '4': 1, '5': 2, '6': 3, '7': 4,
          '8': 5, '9': 6, 'T': 7, 'J': 8, 'Q': 9,
          'K': 10, 'A': 11, '2': 12, 'B': 13, 'R': 14}
+INDEX = OrderedDict(sorted(INDEX.items(), key=lambda t: t[1]))
 
 
 def doudizhu_sort_str(card_1, card_2):
@@ -116,7 +116,7 @@ def get_landlord_score(current_hand):
     return score
 
 
-def get_optimal_action(probs, legal_actions):
+def get_optimal_action(probs, legal_actions, np_random):
     ''' Determine the optimal action from legal actions
     according to the probabilities of abstract actions.
 
@@ -140,7 +140,7 @@ def get_optimal_action(probs, legal_actions):
     optimal_actions = [legal_actions[index] for index,
                        prob in enumerate(action_probs) if prob == optimal_prob]
     if len(optimal_actions) > 1:
-        return np.random.choice(optimal_actions)
+        return np_random.choice(optimal_actions)
     return optimal_actions[0]
 
 
@@ -173,7 +173,7 @@ def contains_cards(candidate, target):
     Returns:
         boolean
     '''
-    # In normal cases, most continuous calls of this function 
+    # In normal cases, most continuous calls of this function
     #   will test different targets against the same candidate.
     # So the cached counts of each card in candidate can speed up
     #   the comparison for following tests if candidate keeps the same.

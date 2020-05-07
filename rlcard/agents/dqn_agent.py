@@ -75,6 +75,7 @@ class DQNAgent(object):
             evaluate_every (int): Evaluate every N steps
             action_num (int): The number of the actions
             state_space (list): The space of the state vector
+            train_every (int): Train the network every X steps.
             mlp_layers (list): The layer number and the dimension of each layer in MLP
             learning_rate (float): The learning rate of the DQN agent.
         '''
@@ -118,11 +119,10 @@ class DQNAgent(object):
         self.total_t += 1
         tmp = self.total_t - self.replay_memory_init_size
         if tmp>=0 and tmp%self.train_every == 0:
-            loss = self.train()
-            print('\rINFO - Step {}, loss: {}'.format(self.total_t, loss), end='')
+            self.train()
 
     def step(self, state):
-        ''' Predict the action for genrating training data
+        ''' Predict the action for generating training data
 
         Args:
             state (numpy.array): current state
@@ -211,7 +211,7 @@ class DQNAgent(object):
         Args:
             global_vars (list): A list of tensor
         '''
-        self_vars = tf.contrib.slim.get_variables(scope=self.scope+'/', collection=tf.GraphKeys.TRAINABLE_VARIABLES)
+        self_vars = tf.contrib.slim.get_variables(scope=self.scope, collection=tf.GraphKeys.TRAINABLE_VARIABLES)
         update_ops = []
         for v1, v2 in zip(global_vars, self_vars):
             op = v2.assign(v1)
@@ -233,8 +233,8 @@ class Estimator():
         self.scope = scope
         self.action_num = action_num
         self.learning_rate=learning_rate
-        self.state_shape = state_shape
-        self.mlp_layers = mlp_layers
+        self.state_shape = state_shape if isinstance(state_shape, list) else [state_shape]
+        self.mlp_layers = map(int, mlp_layers)
 
         with tf.variable_scope(scope):
             # Build the graph

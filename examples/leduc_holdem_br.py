@@ -8,24 +8,21 @@ from rlcard.agents.random_agent import RandomAgent
 from rlcard.agents.cfr_agent import CFRAgent
 from rlcard.agents.cfr_agent import CFRAgent
 from rlcard import models
-from rlcard.utils.utils import set_global_seed
+from rlcard.utils.utils import set_global_seed, tournament
 from rlcard.utils.logger import Logger
 
 # Make environment and enable human mode
-env = rlcard.make('leduc-holdem', allow_step_back=True)
-eval_env = rlcard.make('leduc-holdem', allow_step_back=True)
+env = rlcard.make('leduc-holdem', config={'allow_step_back': True, 'allow_raw_data': True})
+eval_env = rlcard.make('leduc-holdem', config={'allow_step_back': True, 'allow_raw_data': True})
 
 # Set the iterations numbers and how frequently we evaluate/save plot
-evaluate_every = 10
+evaluate_every = 100
 save_plot_every = 1000
-evaluate_num = 100
+evaluate_num = 10000
 episode_num = 10000000
 
 # The paths for saving the logs and learning curves
-root_path = './experiments/leduc_holdem_cfr_result/'
-log_path = root_path + 'log.txt'
-csv_path = root_path + 'performance.csv'
-figure_path = root_path + 'figures/'
+log_dir = './experiments/leduc_holdem_br_result/'
 
 # Set a global seed
 set_global_seed(0)
@@ -36,14 +33,13 @@ opponent = CFRAgent(env)
 #opponent = RandomAgent(action_num=env.action_num)
 #opponent.load()  # If we have saved model, we first load the model
 
+#agent = RandomAgent(action_num=env.action_num)
 agent = BRAgent(eval_env, opponent)
 #agent = CFRAgent(env) 
 
-# Evaluate CFR against pre-trained NFSP
 eval_env.set_agents([agent, opponent])
-
 # Init a Logger to plot the learning curve
-logger = Logger(xlabel='iteration', ylabel='reward', legend='CFR on Leduc Holdem', log_path=log_path, csv_path=csv_path)
+logger = Logger(log_dir)
 
 for episode in range(episode_num):
     opponent.train()
@@ -51,20 +47,9 @@ for episode in range(episode_num):
     print('\rIteration {}'.format(episode), end='')
     # Evaluate the performance. Play with NFSP agents.
     if episode % evaluate_every == 0:
-        reward = 0
-        for eval_episode in range(evaluate_num):
-            _, payoffs = eval_env.run(is_training=False)
-            reward += payoffs[0]
-        logger.log('\n########## Evaluation ##########')
-        logger.log('Iteration: {} Average reward is {}'.format(episode, float(reward)/evaluate_num))
+        logger.log_performance(env.timestep, tournament(eval_env, evaluate_num)[0])
 
-        # Add point to logger
-        logger.add_point(x=env.timestep, y=float(reward)/evaluate_num)
-
-    # Make plot
-    if episode % save_plot_every == 0 and episode > 0:
-        logger.make_plot(save_path=figure_path+str(episode)+'.png')
-
-# Make the final plot
-logger.make_plot(save_path=figure_path+'final_'+str(episode)+'.png')
+# Close files in the logger
+logger.close_files()
+logger.plot('BR')
 

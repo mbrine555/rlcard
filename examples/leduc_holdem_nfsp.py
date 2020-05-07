@@ -11,13 +11,13 @@ from rlcard.utils.utils import set_global_seed, tournament
 from rlcard.utils.logger import Logger
 
 # Make environment
-env = rlcard.make('leduc-holdem')
-eval_env = rlcard.make('leduc-holdem')
+env = rlcard.make('leduc-holdem', config={'seed': 0})
+eval_env = rlcard.make('leduc-holdem', config={'seed': 0})
 
 # Set the iterations numbers and how frequently we evaluate/save plot
 evaluate_every = 10000
 evaluate_num = 10000
-episode_num = 100000
+episode_num = 200000
 
 # The intial memory size
 memory_init_size = 1000

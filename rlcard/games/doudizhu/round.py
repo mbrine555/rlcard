@@ -5,9 +5,8 @@
 import functools
 import numpy as np
 
-from rlcard.games.doudizhu.dealer import DoudizhuDealer as Dealer
-from rlcard.games.doudizhu.judger import cards2str
-from rlcard.games.doudizhu.utils import doudizhu_sort_card
+from rlcard.games.doudizhu import Dealer
+from rlcard.games.doudizhu.utils import cards2str, doudizhu_sort_card
 from rlcard.games.doudizhu.utils import CARD_RANK_STR, CARD_RANK_STR_INDEX
 
 
@@ -15,12 +14,13 @@ class DoudizhuRound(object):
     ''' Round can call other Classes' functions to keep the game running
     '''
 
-    def __init__(self):
+    def __init__(self, np_random):
+        self.np_random = np_random
         self.trace = []
         self.played_cards = np.zeros((len(CARD_RANK_STR), ), dtype=np.int)
 
         self.greater_player = None
-        self.dealer = Dealer()
+        self.dealer = Dealer(self.np_random)
         self.deck_str = cards2str(self.dealer.deck)
 
     def initiate(self, players):
@@ -103,9 +103,9 @@ class DoudizhuRound(object):
             The last greater_player's id in trace
         '''
         for i in range(len(self.trace) - 1, -1, -1):
-            id, action = self.trace[i]
+            _id, action = self.trace[i]
             if (action != 'pass'):
-                return id
+                return _id
         return None
 
     def find_last_played_cards_in_trace(self, player_id):

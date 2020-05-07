@@ -7,18 +7,16 @@ import os
 import numpy as np
 
 import rlcard
-from rlcard.agents.nfsp_agent import DQNAgent
-from rlcard.agents.random_agent import RandomAgent
-from rlcard.utils.utils import set_global_seed, tournament
-from rlcard.utils.logger import Logger
+from rlcard.agents import DQNAgent
+from rlcard.agents import RandomAgent
+from rlcard.utils import set_global_seed, tournament
+from rlcard.utils import Logger
 
 # Make environment
-env = rlcard.make('leduc-holdem')
-eval_env = rlcard.make('leduc-holdem')
-env.set_mode(single_agent_mode=True)
-eval_env.set_mode(single_agent_mode=True)
+env = rlcard.make('leduc-holdem', config={'seed': 0, 'single_agent_mode':True})
+eval_env = rlcard.make('leduc-holdem', config={'seed': 0, 'single_agent_mode':True})
 
-# Set the iterations numbers and how frequently we evaluate/save plot
+# Set the iterations numbers and how frequently we evaluate the performance
 evaluate_every = 1000
 evaluate_num = 10000
 timesteps = 100000
