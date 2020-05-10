@@ -14,7 +14,7 @@ class EuchreDealer(object):
     def shuffle(self):
         ''' Shuffle the deck
         '''
-        random.shuffle(self.deck)
+        self.np_random.shuffle(self.deck)
 
     def deal_cards(self, player, num):
         ''' Deal some cards from deck to one player
