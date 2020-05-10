@@ -1,0 +1,1 @@
+from rlcard.games.euchre_trick.dealer import EuchreDealer as Dealer
