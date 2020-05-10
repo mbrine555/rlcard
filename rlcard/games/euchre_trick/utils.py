@@ -3,6 +3,9 @@ from rlcard.core import Card
 # Maps trump suit to left bower
 LEFT = {'D': 'HJ', 'H': 'DJ', 'C': 'SJ', 'S': 'CJ'}
 
+# Order of cards from low->high for non-trump suits
+NON_TRUMP_ORDER = ['9', 'T', 'J', 'Q', 'K', 'A']
+
 def init_euchre_deck():
     ''' Initialize a 24 card Euchre deck
     Returns:
