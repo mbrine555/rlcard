@@ -6,11 +6,10 @@ from rlcard.games.euchre_trick.utils import init_euchre_deck
 class EuchreDealer(object):
     ''' Initialize a Euchre dealer class
     '''
-    def __init__(self):
-        super().__init__()
+    def __init__(self, np_random):
+        self.np_random = np_random
         self.deck = init_euchre_deck()
         self.shuffle()
-        self.hand = []
 
     def shuffle(self):
         ''' Shuffle the deck
